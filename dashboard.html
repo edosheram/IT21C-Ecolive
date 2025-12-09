@@ -65,6 +65,8 @@
           </div>
           <div id="weatherResult" class="weather-result"></div>
         </div>
+          <div id="weatherAnalytics" class="weather-analytics" style="display:none; margin-top: 15px; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;"></div>
+        </div>
       </div>
 
       <div class="card sensor-form-card">
@@ -72,35 +74,36 @@
           <h3><i class="fa-solid fa-sliders"></i> Manage Sensors</h3>
         </div>
         <div class="card-body">
-          <form id="dataForm">
-            <div class="input-group">
-              <i class="fa-solid fa-tag"></i>
-              <input id="sensorName" type="text" placeholder="Sensor Name (e.g., Air Quality)" required />
-            </div>
-            <div class="input-group">
-              <i class="fa-solid fa-align-left"></i>
-              <input id="sensorDesc" type="text" placeholder="Description (optional)" />
-            </div>
-            <div class="input-group">
-              <i class="fa-solid fa-map-pin"></i>
-              <input id="sensorCity" type="text" placeholder="City (e.g., Manila)" required />
-            </div>
-            <div class="row form-row">
-              <div class="input-group flex-grow">
-                <i class="fa-solid fa-gauge-high"></i>
-                <input id="sensorValue" type="number" step="any" placeholder="Value" />
-              </div>
-              <label class="checkbox-container">
-                <input id="autoValue" type="checkbox" />
-                <span class="checkmark"></span>
-                Auto-generate
-              </label>
-            </div>
-            <button type="submit" class="submit-btn"><i class="fa-solid fa-plus"></i> Add / Update Sensor</button>
-          </form>
+          <div id="sensorCheckboxes" class="sensor-checkboxes">
+            <p class="hint-text">Select sensors to monitor for the current city:</p>
+            
+            <label class="checkbox-container">
+              <input type="checkbox" id="cbAir" value="Air Quality">
+              <span class="checkmark"></span>
+              Air Quality
+            </label>
+
+            <label class="checkbox-container">
+              <input type="checkbox" id="cbWater" value="Water Quality">
+              <span class="checkmark"></span>
+              Water Quality
+            </label>
+
+            <label class="checkbox-container">
+              <input type="checkbox" id="cbSoil" value="Soil Quality">
+              <span class="checkmark"></span>
+              Soil Quality
+            </label>
+
+            <label class="checkbox-container">
+              <input type="checkbox" id="cbEco" value="Ecosystem Health">
+              <span class="checkmark"></span>
+              Ecosystem Health
+            </label>
+          </div>
 
           <div class="saved-sensors-section">
-            <h4><i class="fa-solid fa-list-check"></i> All Saved Sensors</h4>
+            <h4><i class="fa-solid fa-seedling"></i> Environmental Data</h4>
             <ul id="dataList" class="sensor-list"></ul>
           </div>
         </div>

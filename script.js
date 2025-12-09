@@ -69,10 +69,17 @@ function saveAllSensors(instances) {
 // =====================
 // Manage Sensors UI (Add / Update / Delete)
 // Elements
-const dataForm = document.getElementById("dataForm");
 const dataList = document.getElementById("dataList");
-const autoCheckbox = document.getElementById("autoValue");
 const cityInputField = document.getElementById("cityInput");
+// Checkboxes
+const checkboxes = {
+  "Air Quality": document.getElementById("cbAir"),
+  "Water Quality": document.getElementById("cbWater"),
+  "Soil Quality": document.getElementById("cbSoil"),
+  "Ecosystem Health": document.getElementById("cbEco")
+};
+let currentWeatherData = null;
+let currentCity = null;
 
 // Utility: generate a demo random value
 function randomValueForDemo() {
@@ -96,17 +103,7 @@ function renderManageList() {
     val.textContent = s.getValue();
     right.appendChild(val);
 
-    // edit button -> populate form
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => {
-      document.getElementById("sensorName").value = s.getName();
-      document.getElementById("sensorDesc").value = s.description || "";
-      document.getElementById("sensorCity").value = s.city || "";
-      document.getElementById("sensorValue").value = s.getValue();
-      document.getElementById("autoValue").checked = false;
-    });
-    right.appendChild(editBtn);
+    // edit button removed (form replaced by checkboxes)
 
     // delete button
     const delBtn = document.createElement("button");
@@ -127,68 +124,74 @@ function renderManageList() {
 }
 
 // Handle add/update form submit
-dataForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = document.getElementById("sensorName").value.trim();
-  const desc = document.getElementById("sensorDesc").value.trim();
-  const city = document.getElementById("sensorCity").value.trim();
-  const manualValueRaw = document.getElementById("sensorValue").value;
-  const auto = document.getElementById("autoValue").checked;
-
-  if (!name || !city) {
-    alert("Sensor Name and City are required.");
+// Handle Checkbox Changes
+async function toggleSensor(type, isChecked) {
+  if (!currentCity) {
+    alert("Please search for a city first.");
+    // Reset checkbox if no city
+    Object.values(checkboxes).forEach(cb => { if (cb.value === type) cb.checked = !isChecked; });
     return;
   }
 
-  let value;
-  if (auto) {
-    // Option A: auto-generate a demo value
-    value = randomValueForDemo();
-  } else if (manualValueRaw !== "") {
-    // Option B: user provided manual value
-    value = parseFloat(manualValueRaw);
-    if (Number.isNaN(value)) { alert("Invalid manual value"); return; }
-  } else {
-    // neither manual nor auto -> ask user to either provide a value or tick auto
-    if (!confirm("No value entered. Do you want to auto-generate a demo value?")) {
-      return;
-    }
-    value = randomValueForDemo();
-  }
-
-  // Try to find coordinates for city (use OpenWeather current weather to get coords)
-  const coords = await resolveCityCoords(city);
-
-  // Build sensor instance: if name suggests temperature or includes 'temp', create TemperatureSensor
   const allSensors = getAllSensors();
-  const index = allSensors.findIndex(s => s.getName().toLowerCase() === name.toLowerCase());
+  const sensorName = `${currentCity} ${type}`;
+  const existingIdx = allSensors.findIndex(s => s.getName() === sensorName);
 
-  const lat = coords ? coords.lat : null;
-  const lon = coords ? coords.lon : null;
+  if (isChecked) {
+    if (existingIdx === -1) {
+      // Need weather data
+      if (!currentWeatherData) {
+        currentWeatherData = await fetchWeatherForCity(currentCity);
+      }
+      if (!currentWeatherData) return;
 
-  if (index >= 0) {
-    // update existing
-    allSensors[index].setValue(value);
-    allSensors[index].description = desc;
-    allSensors[index].city = city;
-    allSensors[index].lat = lat;
-    allSensors[index].lon = lon;
+      let value = 0;
+      let unit = "";
+      let desc = "";
+
+      // Generate Mock Data for Environmental Stats
+      if (type === "Air Quality") {
+        value = Math.floor(Math.random() * 150) + 20; // 20-170 AQI
+        unit = "AQI";
+        desc = "PM2.5 Index";
+      }
+      else if (type === "Water Quality") {
+        value = (Math.random() * 3 + 6).toFixed(1); // 6.0 - 9.0 pH
+        unit = "pH";
+        desc = "Acidity Level";
+      }
+      else if (type === "Soil Quality") {
+        value = Math.floor(Math.random() * 100);
+        unit = "%";
+        desc = "Moisture Level";
+      }
+      else if (type === "Ecosystem Health") {
+        value = Math.floor(Math.random() * 100);
+        unit = "Index";
+        desc = "Biodiversity Score";
+      }
+
+      const newSensor = new TemperatureSensor(sensorName, value, desc, currentCity, currentWeatherData.coord.lat, currentWeatherData.coord.lon, unit);
+      allSensors.push(newSensor);
+    }
   } else {
-    const instance = (name.toLowerCase().includes("temp") || name.toLowerCase().includes("temperature"))
-      ? new TemperatureSensor(name, value, desc, city, lat, lon)
-      : new Sensor(name, value, desc, city, lat, lon);
-    allSensors.push(instance);
+    if (existingIdx !== -1) {
+      allSensors.splice(existingIdx, 1);
+    }
   }
-
   saveAllSensors(allSensors);
   renderManageList();
 
-  // If the currently viewed city matches this sensor's city, refresh the city view
-  if (currentCity && currentCity.toLowerCase() === city.toLowerCase()) {
-    renderCityView(currentCity);
-  }
+  // Refresh view to update chart/map
+  const filtered = allSensors.filter(s => s.city && s.city.toLowerCase() === currentCity.toLowerCase());
+  updateChartForSensors(filtered);
+  updateMapForSensors(filtered, currentWeatherData?.coord?.lat, currentWeatherData?.coord?.lon);
+}
 
-  dataForm.reset();
+Object.values(checkboxes).forEach(cb => {
+  cb.addEventListener('change', (e) => {
+    toggleSensor(e.target.value, e.target.checked);
+  });
 });
 
 // initialize manage list
@@ -240,6 +243,23 @@ function updateMapForSensors(sensorArray, focusLat = null, focusLon = null) {
   if (center) map.setView(center, 10);
 }
 
+// Weather Circle Layer
+let weatherCircle = null;
+
+function updateMapWeatherCircle(lat, lon, color) {
+  if (weatherCircle) {
+    map.removeLayer(weatherCircle);
+  }
+  if (lat && lon && color) {
+    weatherCircle = L.circle([lat, lon], {
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.3,
+      radius: 5000 // 5km radius
+    }).addTo(map);
+  }
+}
+
 // =====================
 // Weather integration: search city and render city view
 const OPENWEATHER_KEY = "96bc625a9a03c36253c2ea64cba0f9e3"; // <<< REPLACE THIS
@@ -260,62 +280,91 @@ async function resolveCityCoords(city) {
   return null;
 }
 
-// Current city being viewed (string)
-let currentCity = null;
 
-// Render only sensors that belong to a city (city search triggers this)
 async function renderCityView(city) {
-  if (!city) return;
   currentCity = city;
+  const data = await fetchWeatherForCity(city);
+  currentWeatherData = data;
 
-  // Show weather
-  const weatherBox = document.getElementById("weatherResult");
-  weatherBox.innerHTML = "Loading weather...";
+  const resultDiv = document.getElementById("weatherResult");
+  const analyticsDiv = document.getElementById("weatherAnalytics");
 
-  const weatherData = await fetchWeatherForCity(city);
-  if (!weatherData || !weatherData.main) {
-    weatherBox.textContent = "City not found / weather unavailable.";
-    // Show any sensors that match city name (if stored without coords)
-    const allSensors = getAllSensors();
-    const filtered = allSensors.filter(s => s.city && s.city.toLowerCase() === city.toLowerCase());
-    updateChartForSensors(filtered);
-    updateMapForSensors(filtered);
+  if (!data) {
+    if (resultDiv) resultDiv.innerHTML = `<p style="color:red;">Could not fetch weather for "${city}".</p>`;
+    if (analyticsDiv) analyticsDiv.style.display = "none";
+    updateMapWeatherCircle(null, null, null);
     return;
   }
 
-  // Show weather info
-  weatherBox.innerHTML = `
-    <div><strong>${weatherData.name}, ${weatherData.sys.country}</strong></div>
-    <div>Temp: ${weatherData.main.temp} °C</div>
-    <div>Humidity: ${weatherData.main.humidity}%</div>
-    <div>Weather: ${weatherData.weather[0].main}</div>
-  `;
+  // Display basic weather info
+  const { main, weather, wind } = data;
+  const temp = main.temp;
+  const desc = weather[0].description;
+  const icon = `https://openweathermap.org/img/wn/${weather[0].icon}.png`;
 
-  // Create/update the default city temperature sensor (CityName Temp)
-  const allSensors = getAllSensors();
-  const cityTempName = `${weatherData.name} Temp`;
-  const cityTempVal = +weatherData.main.temp;
-  const coords = { lat: weatherData.coord.lat, lon: weatherData.coord.lon };
-
-  const idx = allSensors.findIndex(s => s.getName().toLowerCase() === cityTempName.toLowerCase());
-  if (idx >= 0) {
-    allSensors[idx].setValue(cityTempVal);
-    allSensors[idx].lat = coords.lat; allSensors[idx].lon = coords.lon;
-    allSensors[idx].city = weatherData.name;
-  } else {
-    // add TemperatureSensor for the city
-    allSensors.push(new TemperatureSensor(cityTempName, cityTempVal, "Auto city temperature", weatherData.name, coords.lat, coords.lon));
+  if (resultDiv) {
+    resultDiv.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h4>${data.name}, ${data.sys.country}</h4>
+          <p style="font-size:1.2em; font-weight:bold;">${temp}°C</p>
+          <p style="text-transform:capitalize;">${desc}</p>
+        </div>
+        <img src="${icon}" alt="${desc}" title="${desc}" />
+      </div>
+      <div style="margin-top:10px; font-size:0.9em; color:#555;">
+        <span>Humidity: ${main.humidity}%</span> | <span>Wind: ${wind.speed} m/s</span>
+      </div>
+    `;
   }
 
-  saveAllSensors(allSensors);
-  renderManageList();
+  // Analytics: Good or Bad
+  let status = "Moderate";
+  let color = "orange";
+  let bgColor = "#fff3cd";
+  let textColor = "#856404";
 
-  // Filter sensors belonging to this city (case-insensitive)
-  const filteredSensors = allSensors.filter(s => s.city && s.city.toLowerCase() === weatherData.name.toLowerCase());
+  const isRain = weather[0].main.toLowerCase().includes("rain") || weather[0].main.toLowerCase().includes("thunder");
 
-  // Update chart & map to show only filteredSensors
-  updateChartForSensors(filteredSensors);
-  updateMapForSensors(filteredSensors, coords.lat, coords.lon);
+  if (temp >= 18 && temp <= 32 && !isRain && wind.speed < 10) {
+    status = "Good Condition";
+    color = "green";
+    bgColor = "#d4edda";
+    textColor = "#155724";
+  } else if (temp > 35 || temp < 5 || isRain || wind.speed > 15) {
+    status = "Bad Condition";
+    color = "red";
+    bgColor = "#f8d7da";
+    textColor = "#721c24";
+  }
+
+  if (analyticsDiv) {
+    analyticsDiv.style.display = "block";
+    analyticsDiv.style.backgroundColor = bgColor;
+    analyticsDiv.style.color = textColor;
+    analyticsDiv.innerHTML = `<strong>Weather Analysis:</strong> ${status}`;
+  }
+
+  // Update Map Circle
+  if (data.coord) {
+    updateMapWeatherCircle(data.coord.lat, data.coord.lon, color);
+
+    // Sync Sensors
+    const allSensors = getAllSensors();
+    const citySensors = allSensors.filter(s => s.city && s.city.toLowerCase() === city.toLowerCase());
+
+    updateChartForSensors(citySensors);
+    updateMapForSensors(citySensors, data.coord.lat, data.coord.lon);
+
+    // Sync Checkboxes
+    Object.values(checkboxes).forEach(cb => cb.checked = false);
+    citySensors.forEach(s => {
+      if (s.getName().indexOf("Air Quality") !== -1) checkboxes["Air Quality"].checked = true;
+      if (s.getName().indexOf("Water Quality") !== -1) checkboxes["Water Quality"].checked = true;
+      if (s.getName().indexOf("Soil Quality") !== -1) checkboxes["Soil Quality"].checked = true;
+      if (s.getName().indexOf("Ecosystem Health") !== -1) checkboxes["Ecosystem Health"].checked = true;
+    });
+  }
 }
 
 // Hook search button
@@ -328,7 +377,6 @@ document.getElementById("fetchWeather").addEventListener("click", async () => {
   await renderCityView(city);
 });
 
-// If page loads and there is a previously viewed city stored, optionally restore — not required now
 
 // Initialize: set empty array if nothing
 if (!localStorage.getItem(STORAGE_KEY)) localStorage.setItem(STORAGE_KEY, "[]");
