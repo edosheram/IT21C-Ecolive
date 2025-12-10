@@ -292,6 +292,8 @@ async function renderCityView(city) {
   if (!data) {
     if (resultDiv) resultDiv.innerHTML = `<p style="color:red;">Could not fetch weather for "${city}".</p>`;
     if (analyticsDiv) analyticsDiv.style.display = "none";
+    const forecastDiv = document.getElementById("weatherForecast");
+    if (forecastDiv) forecastDiv.style.display = "none";
     updateMapWeatherCircle(null, null, null);
     return;
   }
@@ -344,6 +346,11 @@ async function renderCityView(city) {
     analyticsDiv.style.color = textColor;
     analyticsDiv.innerHTML = `<strong>Weather Analysis:</strong> ${status}`;
   }
+
+
+
+  // Render Forecast
+  await renderForecast(city);
 
   // Update Map Circle
   if (data.coord) {
@@ -416,4 +423,73 @@ if (themeToggleBtn) {
       envChart.update();
     }
   });
+}
+
+// =====================
+// Forecast Integration
+async function fetchForecast(city) {
+  try {
+    const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${OPENWEATHER_KEY}&units=metric`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.error("Forecast Error:", e);
+    return null;
+  }
+}
+
+async function renderForecast(city) {
+  const container = document.getElementById("weatherForecast");
+  if (!container) return;
+
+  const data = await fetchForecast(city);
+  if (!data || !data.list) {
+    container.style.display = "none";
+    return;
+  }
+
+  // Process list to get daily snapshots (approx noon)
+  const days = {};
+  data.list.forEach(item => {
+    // Group by LOCAL date to avoid timezone issues (e.g. UTC day splits into same Local day)
+    const d = new Date(item.dt * 1000);
+    const dateKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+    if (!days[dateKey]) days[dateKey] = [];
+    days[dateKey].push(item);
+  });
+
+  // limit to 5 days
+  const sortedDates = Object.keys(days).sort();
+  const dailyData = sortedDates.slice(0, 5).map(date => {
+    const items = days[date];
+    // prefer 12:00, else middle
+    let best = items.find(i => i.dt_txt.includes("12:00:00"));
+    if (!best) best = items[Math.floor(items.length / 2)];
+    return best;
+  });
+
+  let html = `<span class="forecast-title">5-Day Forecast</span><div class="forecast-row">`;
+
+  dailyData.forEach(d => {
+    const dateObj = new Date(d.dt * 1000);
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+    const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const temp = Math.round(d.main.temp);
+    const icon = `https://openweathermap.org/img/wn/${d.weather[0].icon}.png`;
+    const desc = d.weather[0].main;
+
+    html += `
+      <div class="forecast-card">
+        <span class="f-date">${dayName}<br>${dateStr}</span>
+        <img src="${icon}" alt="${desc}">
+        <span class="f-temp">${temp}°C</span>
+        <span class="f-desc">${desc}</span>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+  container.style.display = "block";
 }

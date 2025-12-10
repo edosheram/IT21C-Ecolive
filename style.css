@@ -1,38 +1,45 @@
 :root {
-  /* Light Theme */
-  --bg-color: #f0f2f5;
-  --card-bg: #ffffff;
-  --text-color: #333333;
-  --text-muted: #666666;
-  --border-color: #e0e0e0;
-  --input-bg: #f9f9f9;
+  /* Modern Eco-Futurist Palette (Light) */
+  --bg-color: #e0f2f1;
+  /* Soft Mint */
+  --card-bg: rgba(255, 255, 255, 0.7);
+  /* Glass */
+  --text-color: #263238;
+  --text-muted: #546e7a;
+  --border-color: rgba(255, 255, 255, 0.5);
+  --input-bg: rgba(255, 255, 255, 0.5);
 
   /* Brand Colors */
-  --accent: #2e8b57;
-  --accent-gradient: linear-gradient(135deg, #2e8b57 0%, #3cb371 100%);
-  --accent-hover: #246b43;
+  --accent: #00b894;
+  /* Vivid Tech Green */
+  --accent-gradient: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  --accent-hover: #01997b;
+  --accent-glow: 0 0 15px rgba(0, 184, 148, 0.4);
 
-  /* Glassmorphism (Login) */
-  --glass-bg: rgba(255, 255, 255, 0.15);
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-
-  /* Shadows */
-  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  --header-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+  /* Glassmorphism */
+  --glass-blur: blur(16px);
+  --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 }
 
-/* Dark Theme Variables */
+/* Midnight Green Theme (Dark) */
 body.dark-mode {
-  --bg-color: #121212;
-  --card-bg: #1e1e1e;
-  --text-color: #e0e0e0;
-  --text-muted: #aaaaaa;
-  --border-color: #333333;
-  --input-bg: #2c2c2c;
+  --bg-color: #0f171e;
+  /* Deep Space */
+  --card-bg: rgba(22, 33, 44, 0.6);
+  /* Glass Dark */
+  --text-color: #eceff1;
+  --text-muted: #b0bec5;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(0, 0, 0, 0.3);
 
-  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --header-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
+  --accent: #00e676;
+  /* Neon Green */
+  --accent-gradient: linear-gradient(135deg, #00e676 0%, #1de9b6 100%);
+  --accent-glow: 0 0 20px rgba(0, 230, 118, 0.3);
+
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -43,8 +50,12 @@ body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
   background: var(--bg-color);
+  background-image:
+    radial-gradient(at 0% 0%, rgba(0, 184, 148, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(0, 206, 201, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
   color: var(--text-color);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background 0.5s ease, color 0.3s ease;
 }
 
 /* --- Dashboard Styles (Enhanced) --- */
@@ -59,12 +70,15 @@ header {
   align-items: center;
   padding: 15px 30px;
   background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   color: var(--text-color);
   box-shadow: var(--header-shadow);
   position: sticky;
   top: 0;
   z-index: 1000;
   transition: background-color 0.3s ease;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .logo-area {
@@ -271,11 +285,26 @@ body.dark-mode .theme-btn:hover {
 
 .card {
   background: var(--card-bg);
-  border-radius: 16px;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 20px;
   box-shadow: var(--card-shadow);
   border: 1px solid var(--border-color);
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card:hover {
@@ -286,7 +315,8 @@ body.dark-mode .theme-btn:hover {
 .card-header {
   padding: 20px 25px;
   border-bottom: 1px solid var(--border-color);
-  background: var(--card-bg);
+  background: rgba(255, 255, 255, 0.05);
+  /* Slight tint */
   transition: background-color 0.3s;
 }
 
@@ -608,4 +638,119 @@ body.login-page::before {
   font-weight: 500;
   min-height: 24px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Weather Forecast Styles --- */
+.forecast-container {
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+}
+
+.forecast-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 15px;
+  display: block;
+}
+
+.forecast-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.forecast-card {
+  background: var(--input-bg);
+  padding: 10px 5px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s;
+}
+
+.forecast-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.forecast-card .f-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  display: block;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.forecast-card img {
+  width: 40px;
+  height: 40px;
+  margin: 2px 0;
+}
+
+.forecast-card .f-temp {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-color);
+  display: block;
+}
+
+.forecast-card .f-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  display: block;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+@media (max-width: 480px) {
+  .forecast-row {
+    grid-template-columns: repeat(3, 1fr);
+    /* Wrap on very small screens */
+  }
+}
+
+/* --- Team Section Styles --- */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.team-card {
+  background: var(--input-bg);
+  padding: 15px;
+  border-radius: 15px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  transition: transform 0.3s;
+}
+
+.team-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--accent);
+}
+
+.team-card img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 10px;
+  border: 2px solid var(--accent);
+}
+
+.team-card h5 {
+  margin: 5px 0;
+  font-size: 16px;
+  color: var(--text-color);
+}
+
+.team-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
